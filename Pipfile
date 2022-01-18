@@ -9,6 +9,7 @@ pyyaml = "6.0"
 asyncio = "3.4.3"
 
 [dev-packages]
+pipenv-setup = "*"
 
 [requires]
 python_version = "3.8"

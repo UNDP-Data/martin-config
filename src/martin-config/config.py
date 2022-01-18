@@ -1078,7 +1078,7 @@ def create_general_config(listen_addresses="'$LISTEN_ADDRESSES'", connection_str
     """
     return locals()
 
-if __name__ == '__main__':
+def main():
     import os
     logging.basicConfig()
     sthandler = logging.StreamHandler()

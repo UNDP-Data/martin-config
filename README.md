@@ -1,4 +1,5 @@
-# martin-config-generator
+# martin-config
+
 This repository is to manage the python script to generate config.yaml for martin from PostGIS database.
 
 ## Installation
@@ -40,5 +41,17 @@ optional arguments:
 
 ```bash
 DATABASE_CONNECTION="postgres://geohubusr:W%40s%243qklin@undp-ngd-psql-gishub-01-dev.postgres.database.azure.com:5432/geodata?sslmode=require"
-python src/config.py -dsn="$DATABASE_CONNECTION" -s global -o ./config.yaml
+python ./src/martin-config -dsn="$DATABASE_CONNECTION" -s global -o ./config.yaml
+```
+
+## install by setup.py
+
+```bash
+python setup.py install
+```
+
+for uninstalling,
+
+```bash
+pip uninstall martin-config
 ```
