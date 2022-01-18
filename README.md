@@ -41,7 +41,22 @@ optional arguments:
 
 ```bash
 DATABASE_CONNECTION="postgres://geohubusr:W%40s%243qklin@undp-ngd-psql-gishub-01-dev.postgres.database.azure.com:5432/geodata?sslmode=require"
+python ./src/martin-config -dsn="$DATABASE_CONNECTION" -o ./config.yaml
+
+# for exporting specific scheme only
 python ./src/martin-config -dsn="$DATABASE_CONNECTION" -s global -o ./config.yaml
+```
+
+if `-s global` is not specified, it will generate for all schemes.
+
+For improving the performance of the script, please create statistics for all tables by the following SQL.
+
+```sql
+-- analyze all tables
+ANALYZE;
+
+-- analyze specific table
+ANALYZE electricity.access2012;
 ```
 
 ## install by setup.py
