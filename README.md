@@ -70,3 +70,11 @@ for uninstalling,
 ```bash
 pip uninstall martin-config
 ```
+
+## Docker
+
+```bash
+docker build -t martin-config:latest .
+
+docker run -ti --rm -v $(pwd):/home/undp/src martin-config:latest
+```
