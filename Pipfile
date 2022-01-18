@@ -1,0 +1,14 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+asyncpg = "0.21.0"
+pyyaml = "6.0"
+asyncio = "3.4.3"
+
+[dev-packages]
+
+[requires]
+python_version = "3.8"
