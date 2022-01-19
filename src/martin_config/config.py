@@ -1109,8 +1109,13 @@ def main():
                                  'stdout ', type=str,
                             default=None)
 
+    arg_parser.add_argument('-ufs', '--upload_to_file_share',
+                            help='The name of the Azure file share where the config will be uploaded', type=str,
+                            default='mconfig',required=False)
 
-
+    arg_parser.add_argument('-surl', '--sas_url',
+                            help='A full SAS URL of the Azure file share where the config will be uploaded', type=str,
+                            default=None, required=False)
 
     #parse and collect args
     args = arg_parser.parse_args()
@@ -1119,7 +1124,8 @@ def main():
     schema = args.database_schema
     include_general_config = args.include_general_config
     out_yaml_file = args.out_yaml_file
-
+    azure_file_share_name = args.upload_to_file_share
+    sas_url=args.sas_url
     # execute
 
 
@@ -1137,3 +1143,10 @@ def main():
         f.write(yaml_config)
         #yaml.safe_dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
+    if sas_url: # there is a default share mconfig
+        from martin_config.azfile import upload_cfg_file
+        upload_cfg_file(
+            sas_url=sas_url,
+            share_name=azure_file_share_name,
+            cfg_file_path=out_yaml_file
+        )
