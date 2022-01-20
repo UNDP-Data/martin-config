@@ -1163,7 +1163,7 @@ def main():
     if not (sas_url and azure_file_share_name and azure_storage_account): # there is a default share mconfig
         raise Exception(f'Could not get connections of Azure Storage. It requires to configure a SAS URL, a file share name and a Azure Storage Account Name through either CLI options or environmental variables.')
 
-    from azfile import upload_cfg_file
+    from martin_config.azfile import upload_cfg_file
     upload_cfg_file(
         azure_storage_account=azure_storage_account,
         sas_url=sas_url,
