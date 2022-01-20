@@ -1014,20 +1014,19 @@ def dump(input_dict, depth=0, content=[]):
     return '\n'.join(content)
 
 
-async def create_config_dict( dsn=None,  schema=None, prop_filter_prefix=None, **conn_dict):
+async def create_config_dict( dsn=None,  schemas=None, prop_filter_prefix=None, **conn_dict):
     """
     Create a configuration dictionary for all table sources in a postgis database.
     If schema is provided the config is generated for the given schema
 
-    :param schema: str, name of the schema to create the config for
+    :param schemas: iter of trings representing schemas in db
     :param prop_filter_prefix: str, the prefix use dto filter the columns that will be insluded in the config
     :param conn_dict: dict,
     :return: a dictionary with configuration for every layer
     """
-
-    schema_cfg = {}
-    if schema is not None:
-        logger.info(f'Creating config dict for tables in "{schema}" schema ...')
+    schemas_cfg = {}
+    if schemas:
+        logger.info(f'Creating config dict for tables in \"{", ".join(schemas)}" schemas ...')
     else:
         logger.info(f'Creating config dict for tables in all available schemas ...')
     async with asyncpg.create_pool(dsn=dsn, min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
@@ -1037,26 +1036,27 @@ async def create_config_dict( dsn=None,  schema=None, prop_filter_prefix=None, *
             available_schemas = await list_schemas(conn_obj=conn_obj)
             available_schemas = set(available_schemas) - set(['public'])
 
-            for schm in available_schemas:
-                if schema is not None:
-                    logger.debug(f'Checking if schema {schema} exists')
-                    assert schema in available_schemas, f'Schema "{schema}" does not exist. valid options are: {",".join(available_schemas)}'
-                    if schm != schema:continue
+            for schema in schemas:
 
-                for table_name in await list_tables(conn_obj=conn_obj, schema=schm):
-                    try:
-                        will_publish = await should_publish(table_name=table_name,conn_obj=conn_obj)
-                    except Exception as ee:
-                        logger.error(f'Failed to fetch comments for table {table_name} because {ee}. Skipping...')
-                        continue
-                    if will_publish == False:
-                        logger.info(f'{table_name} was marked as not publishable and will be skipped')
-                        continue
-                    table_cfg = await get_table_cfg(conn_obj=conn_obj, table_name=table_name, prop_filter_prefix=prop_filter_prefix)
-                    if table_cfg:
-                        schema_cfg.update(table_cfg)
+                logger.debug(f'Checking if schema {schema} exists')
+                if not schema in available_schemas:
+                    logger.warning(f'Schema "{schema}" does not exist in {dsn}.'
+                                   f'Valid options are: {",".join(available_schemas)}')
+                else:
+                    for table_name in await list_tables(conn_obj=conn_obj, schema=schema):
+                        try:
+                            will_publish = await should_publish(table_name=table_name,conn_obj=conn_obj)
+                        except Exception as ee:
+                            logger.error(f'Failed to fetch comments for table {table_name} because {ee}. Skipping...')
+                            continue
+                        if will_publish == False:
+                            logger.info(f'{table_name} was marked as not publishable and will be skipped')
+                            continue
+                        table_cfg = await get_table_cfg(conn_obj=conn_obj, table_name=table_name, prop_filter_prefix=prop_filter_prefix)
+                        if table_cfg:
+                            schemas_cfg.update(table_cfg)
 
-    return {'table_sources:':schema_cfg}
+    return {'table_sources:':schemas_cfg}
 
 
 def create_general_config(listen_addresses="'$LISTEN_ADDRESSES'", connection_string="'$DATABASE_URL'",
@@ -1093,14 +1093,20 @@ def main():
 
     import argparse as ap
 
-    arg_parser = ap.ArgumentParser(formatter_class=ap.ArgumentDefaultsHelpFormatter)
+    class HelpParser(ap.ArgumentParser):
+        def error(self, message):
+
+            self.print_help()
+            exit(0)
+
+    arg_parser = HelpParser(formatter_class=ap.ArgumentDefaultsHelpFormatter)
     arg_parser.add_argument('-dsn', '--postgres_dsn_string', type=str, default=None,
                             help='Connection string to Postgres server', )
     arg_parser.add_argument('-pfp', '--prop_filter_prefix', type=str,  default=None,
                             help='S tring to filter column for every table. \nColumn that start with this string will be added to the configuration', )
-    arg_parser.add_argument('-s', '--database_schema', default=None,
-                            help='The name of the schema to generate the config for ',
-                            type=str)
+    arg_parser.add_argument('-s', '--database_schemas', default=None,
+                            help='A list of schema names',
+                            type=str, nargs='+', )
     arg_parser.add_argument('-igc', '--include_general_config',
                             help='falg to include the general config or no', type=bool, default=True
                             )
@@ -1125,12 +1131,18 @@ def main():
     args = arg_parser.parse_args()
     dsn = args.postgres_dsn_string or os.environ.get('DATABASE_CONNECTION', None)
     prop_filter_prefix = args.prop_filter_prefix
-    schema = args.database_schema
+    schemas = args.database_schemas
     include_general_config = args.include_general_config
     out_yaml_file = args.out_yaml_file
     azure_file_share_name = args.upload_to_file_share or os.environ.get('AZURE_FILESHARE_NAME', None)
     sas_url=args.sas_url or os.environ.get('AZURE_FILESHARE_SASURL', None)
     azure_storage_account=args.azure_storage_account or os.environ.get('AZURE_STORAGE_ACCOUNT', None)
+
+    # transform schemas into iter
+    schemas = set(schemas)
+
+    # execute
+
 
     # execute
     if not dsn:
@@ -1138,9 +1150,9 @@ def main():
 
     config = create_general_config()
 
-    schema_cfg = asyncio.run(create_config_dict(dsn=dsn, schema=schema, prop_filter_prefix=prop_filter_prefix ))
+    schemas_cfg = asyncio.run(create_config_dict(dsn=dsn, schemas=schemas, prop_filter_prefix=prop_filter_prefix ))
 
-    config.update(schema_cfg)
+    config.update(schemas_cfg)
 
     yaml_config = dump(config)
     logger.info(f'Writing config to {out_yaml_file}')
