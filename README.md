@@ -100,7 +100,5 @@ pip uninstall martin-config
 ```bash
 $docker build -t martin-config:latest .
 $docker run -ti --rm -v $(pwd):/home/undp/src martin-config:latest
-
-root@0e89ee1bded9:/home/undp/src# azcopy -v
-azcopy version 10.13.0
+root@5311a6453ce3:/home/undp/src# martin_config -h
 ```

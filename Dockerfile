@@ -1,11 +1,5 @@
-FROM --platform=linux/amd64 alpine as azcopy
-RUN apk add --no-cache wget \
-&&	wget https://aka.ms/downloadazcopy-v10-linux -O /tmp/azcopy.tgz \
-&&	export BIN_LOCATION=$(tar -tzf /tmp/azcopy.tgz | grep "/azcopy") \
-&&	tar -xzf /tmp/azcopy.tgz $BIN_LOCATION --strip-components=1 -C /usr/bin
-
 FROM --platform=linux/amd64 python:3.8-slim as python-base
-LABEL name="docker-azcopy-martin-config"
+LABEL name="docker-martin-config"
 LABEL maintainer="Jin Igarashi <jin.igarashi@undp.org>"
 
 # Setup env
@@ -29,8 +23,7 @@ RUN pipenv install --system
 COPY . .
 RUN python setup.py install
 
-## for azcopy
-COPY --from=azcopy /usr/bin/azcopy /usr/bin/azcopy
+ENV PYTHONPATH "${PYTHONPATH}:/home/undp/src/src"
 
 WORKDIR /home/undp/src
 CMD ["/bin/bash"]
