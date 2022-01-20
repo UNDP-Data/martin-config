@@ -20,21 +20,31 @@ pipenv shell
 - help
 
 ```bash
-python src/config.py -h
-usage: config.py [-h] -dsn POSTGRES_DSN_STRING [-pfp PROP_FILTER_PREFIX] [-s DATABASE_SCHEMA] [-igc INCLUDE_GENERAL_CONFIG] [-o OUT_YAML_FILE]
+python src/martin_config -h
+usage: martin_config [-h] -dsn POSTGRES_DSN_STRING [-pfp PROP_FILTER_PREFIX] [-s DATABASE_SCHEMA]
+                     [-igc INCLUDE_GENERAL_CONFIG] [-o OUT_YAML_FILE] [-ufs UPLOAD_TO_FILE_SHARE] [-surl SAS_URL]
+                     [-asa AZURE_STORAGE_ACCOUNT]
 
 optional arguments:
   -h, --help            show this help message and exit
   -dsn POSTGRES_DSN_STRING, --postgres_dsn_string POSTGRES_DSN_STRING
                         Connection string to Postgres server (default: None)
   -pfp PROP_FILTER_PREFIX, --prop_filter_prefix PROP_FILTER_PREFIX
-                        S tring to filter column for every table. Column that start with this string will be added to the configuration (default: None)
+                        S tring to filter column for every table. Column that start with this string will be added to the
+                        configuration (default: None)
   -s DATABASE_SCHEMA, --database_schema DATABASE_SCHEMA
                         The name of the schema to generate the config for (default: None)
   -igc INCLUDE_GENERAL_CONFIG, --include_general_config INCLUDE_GENERAL_CONFIG
                         falg to include the general config or no (default: True)
   -o OUT_YAML_FILE, --out_yaml_file OUT_YAML_FILE
-                        Full path to the config file to be created. If not supplied the YAML fill be dumped tostdout (default: None)
+                        Full path to the config file to be created. If not supplied the YAML fill be dumped tostdout (default:
+                        None)
+  -ufs UPLOAD_TO_FILE_SHARE, --upload_to_file_share UPLOAD_TO_FILE_SHARE
+                        The name of the Azure file share where the config will be uploaded (default: None)
+  -surl SAS_URL, --sas_url SAS_URL
+                        A full SAS URL of the Azure file share where the config will be uploaded (default: None)
+  -asa AZURE_STORAGE_ACCOUNT, --azure_storage_account AZURE_STORAGE_ACCOUNT
+                        The name of Azure Storage Account (default: None)
 ```
 
 - run
