@@ -1132,16 +1132,6 @@ def main():
     sas_url=args.sas_url or os.environ.get('AZURE_FILESHARE_SASURL', None)
     azure_storage_account=args.azure_storage_account or os.environ.get('AZURE_STORAGE_ACCOUNT', None)
 
-    # check parameters
-    if sas_url in ('', None):
-        raise Exception(f'Could not get a SAS  from sas_url arg or AZURE_FILESHARE_SASURL env variable')
-
-    if azure_file_share_name in ('', None):
-        raise Exception(f'Could not get a file share name  from azure_file_share_name arg or AZURE_FILESHARE_NAME env variable')
-
-    if azure_storage_account in ('', None):
-        raise Exception(f'Could not get an account name from azure_storage_account arg or AZURE_FILESHARE_SASURL env variable')
-
     # execute
 
 
@@ -1159,11 +1149,13 @@ def main():
         f.write(yaml_config)
         #yaml.safe_dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
-    if sas_url: # there is a default share mconfig
-        from azfile import upload_cfg_file
-        upload_cfg_file(
-            azure_storage_account=azure_storage_account,
-            sas_url=sas_url,
-            share_name=azure_file_share_name,
-            cfg_file_path=out_yaml_file
-        )
+    if not (sas_url and azure_file_share_name and azure_storage_account): # there is a default share mconfig
+        raise Exception(f'Could not get connections of Azure Storage. It requires to configure a SAS URL, a file share name and a Azure Storage Account Name through either CLI options or environmental variables.')
+
+    from azfile import upload_cfg_file
+    upload_cfg_file(
+        azure_storage_account=azure_storage_account,
+        sas_url=sas_url,
+        share_name=azure_file_share_name,
+        cfg_file_path=out_yaml_file
+    )

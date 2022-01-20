@@ -5,15 +5,15 @@ from azure.storage.fileshare import  ShareServiceClient
 
 
 def upload_cfg_file(
-        azure_storage_account='undpngddlsgeohubdev01',
+        azure_storage_account=None,
         sas_url=None,
-        share_name='mconfig',
+        share_name=None,
         cfg_file_path=None,
         file_name=None
 ):
     """
     Upload the config file to an Azure file share
-    :param azure_storage_account: str, the storage account name, default=undpdev..
+    :param azure_storage_account: str, the storage account name
     :param sas_url: str, the file share  SAS URL of the storage account
             used to authenticate te requests and needs to have RWLC rights
     :param share_name: str, the name of the share where the cfg will be uploaded
