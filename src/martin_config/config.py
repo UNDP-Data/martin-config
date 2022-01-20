@@ -1094,7 +1094,7 @@ def main():
     import argparse as ap
 
     arg_parser = ap.ArgumentParser(formatter_class=ap.ArgumentDefaultsHelpFormatter)
-    arg_parser.add_argument('-dsn', '--postgres_dsn_string', type=str, required=True,
+    arg_parser.add_argument('-dsn', '--postgres_dsn_string', type=str, default=None,
                             help='Connection string to Postgres server', )
     arg_parser.add_argument('-pfp', '--prop_filter_prefix', type=str,  default=None,
                             help='S tring to filter column for every table. \nColumn that start with this string will be added to the configuration', )
@@ -1123,7 +1123,7 @@ def main():
 
     #parse and collect args
     args = arg_parser.parse_args()
-    dsn = args.postgres_dsn_string
+    dsn = args.postgres_dsn_string or os.environ.get('DATABASE_CONNECTION', None)
     prop_filter_prefix = args.prop_filter_prefix
     schema = args.database_schema
     include_general_config = args.include_general_config
@@ -1133,9 +1133,8 @@ def main():
     azure_storage_account=args.azure_storage_account or os.environ.get('AZURE_STORAGE_ACCOUNT', None)
 
     # execute
-
-
-    #conn_dict = cs2d(url=dsn)
+    if not dsn:
+        raise Exception(f'PostGIS database connection string is required through either -dsn option or DATABASE_CONNECTION of environmental variable.')
 
     config = create_general_config()
 
