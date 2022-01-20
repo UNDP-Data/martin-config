@@ -53,23 +53,25 @@ optional arguments:
 # create .env to edit your PostGIS connection string and Azure Storage connection information
 cp .env.example .env
 
-python ./src/martin-config -o ./config.yaml
+python ./src/martin_config -o ./config.yaml
 
 # instead of creating .env, you can also specify envrionmental variables directly before the command
 DATABASE_CONNECTION=$DATABASE_CONNECTION\
 AZURE_STORAGE_ACCOUNT=$AZURE_STORAGE_ACCOUNT\
 AZURE_FILESHARE_SASURL=$AZURE_FILESHARE_SASURL\
 AZURE_FILESHARE_NAME=$AZURE_FILESHARE_NAME\
-python ./src/martin-config -o ./config.yaml
+python ./src/martin_config -o ./config.yaml
 
 # Also, you can determine these parameters through the command options
-python ./src/martin-config -o ./config.yaml -dsn $DATABASE_CONNECTION -ufs $AZURE_FILESHARE_NAME -surl $AZURE_FILESHARE_SASURL -asa $AZURE_STORAGE_ACCOUNT
+python ./src/martin_config -o ./config.yaml -dsn $DATABASE_CONNECTION -ufs $AZURE_FILESHARE_NAME -surl $AZURE_FILESHARE_SASURL -asa $AZURE_STORAGE_ACCOUNT
 
 # for exporting specific scheme only
-python ./src/martin-config -s global -o ./config.yaml
+python ./src/martin_config -s global -o ./config.yaml
 ```
 
 if `-s global` is not specified, it will generate for all schemes.
+
+If you want to export multiple schemes, you can specilify like `-s global zambia`.
 
 For improving the performance of the script, please create statistics for all tables by the following SQL.
 
