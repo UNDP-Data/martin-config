@@ -25,13 +25,7 @@ def upload_cfg_file(
     valid authentication SAS URL
     """
 
-
-
-    url = sas_url or os.environ.get(['AZURE_FILESHARE_SASURL'], None)
-    if url in ('', None):
-        raise Exception(f'Could not get a SAS  from sas_url arg or AZURE_FILESHARE_SASURL env variable')
-
-    assert azure_storage_account in url, f'Invalid url={url}'
+    assert azure_storage_account in sas_url, f'Invalid url={sas_url}'
 
     assert cfg_file_path not in ('', None), f'Invalid config_file_path={cfg_file_path}'
     assert os.path.exists(cfg_file_path), f'cfg_file_path does not exist on local file system'

@@ -1,3 +1,3 @@
-from martin_config.config import main
+from config import main
 
 main()

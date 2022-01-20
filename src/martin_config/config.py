@@ -1111,7 +1111,7 @@ def main():
 
     arg_parser.add_argument('-ufs', '--upload_to_file_share',
                             help='The name of the Azure file share where the config will be uploaded', type=str,
-                            default='mconfig',required=False)
+                            default=None,required=False)
 
     arg_parser.add_argument('-surl', '--sas_url',
                             help='A full SAS URL of the Azure file share where the config will be uploaded', type=str,
@@ -1128,9 +1128,20 @@ def main():
     schema = args.database_schema
     include_general_config = args.include_general_config
     out_yaml_file = args.out_yaml_file
-    azure_file_share_name = args.upload_to_file_share
-    sas_url=args.sas_url
-    azure_storage_account=args.azure_storage_account
+    azure_file_share_name = args.upload_to_file_share or os.environ.get('AZURE_FILESHARE_NAME', None)
+    sas_url=args.sas_url or os.environ.get('AZURE_FILESHARE_SASURL', None)
+    azure_storage_account=args.azure_storage_account or os.environ.get('AZURE_STORAGE_ACCOUNT', None)
+
+    # check parameters
+    if sas_url in ('', None):
+        raise Exception(f'Could not get a SAS  from sas_url arg or AZURE_FILESHARE_SASURL env variable')
+
+    if azure_file_share_name in ('', None):
+        raise Exception(f'Could not get a file share name  from azure_file_share_name arg or AZURE_FILESHARE_NAME env variable')
+
+    if azure_storage_account in ('', None):
+        raise Exception(f'Could not get an account name from azure_storage_account arg or AZURE_FILESHARE_SASURL env variable')
+
     # execute
 
 
@@ -1149,7 +1160,7 @@ def main():
         #yaml.safe_dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
     if sas_url: # there is a default share mconfig
-        from martin_config.azfile import upload_cfg_file
+        from azfile import upload_cfg_file
         upload_cfg_file(
             azure_storage_account=azure_storage_account,
             sas_url=sas_url,
