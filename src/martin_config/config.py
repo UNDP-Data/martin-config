@@ -1116,6 +1116,10 @@ def main():
     arg_parser.add_argument('-surl', '--sas_url',
                             help='A full SAS URL of the Azure file share where the config will be uploaded', type=str,
                             default=None, required=False)
+    
+    arg_parser.add_argument('-asa', '--azure_storage_account',
+                            help='The name of Azure Storage Account', type=str,
+                            default=None,required=False)
 
     #parse and collect args
     args = arg_parser.parse_args()
@@ -1126,6 +1130,7 @@ def main():
     out_yaml_file = args.out_yaml_file
     azure_file_share_name = args.upload_to_file_share
     sas_url=args.sas_url
+    azure_storage_account=args.azure_storage_account
     # execute
 
 
@@ -1146,6 +1151,7 @@ def main():
     if sas_url: # there is a default share mconfig
         from martin_config.azfile import upload_cfg_file
         upload_cfg_file(
+            azure_storage_account=azure_storage_account,
             sas_url=sas_url,
             share_name=azure_file_share_name,
             cfg_file_path=out_yaml_file
