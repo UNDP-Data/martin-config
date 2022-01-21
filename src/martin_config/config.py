@@ -1161,7 +1161,7 @@ def main():
         #yaml.safe_dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
     if not (sas_url and azure_file_share_name and azure_storage_account): # there is a default share mconfig
-        print(f'Could not get connections of Azure Storage. It requires to configure a SAS URL, a file share name and a Azure Storage Account Name through either CLI options or environmental variables.')
+        logger.info(f'Could not get connections of Azure Storage. It requires to configure a SAS URL, a file share name and a Azure Storage Account Name through either CLI options or environmental variables.')
         exit(0)
 
     from martin_config.azfile import upload_cfg_file
