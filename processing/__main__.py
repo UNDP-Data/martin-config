@@ -1,18 +1,16 @@
-import logging
-logger = logging.getLogger()
-import asyncpg
-import asyncio
-import json
-import socket
-import yaml
 import time
+import yaml
+import socket
+import json
+import asyncio
+import asyncpg
+import logging
+import urllib.parse as urlparse
 from urllib.parse import quote_plus, urlencode
+from .azfile import upload_cfg_file
+from .config import azure_account, azure_container, azure_sas_url, database
 
-try:
-    import urlparse
-except ImportError:
-    import urllib.parse as urlparse
-
+logger = logging.getLogger()
 
 
 """
@@ -24,7 +22,7 @@ Almost all function accept either an already connected object (conn_obj) or a co
 to do their job.
 
 The most important reason to use asyncpg is the fact that  if the Pool object is used to manage the connections
- a connection timeout can be specified  so the functions  do not fail instantly if a pool that has already connected 
+ a connection timeout can be specified  so the functions  do not fail instantly if a pool that has already connected
  to postgres fails to acquire a connection. This can be the case if this script  is interacting with a remote database
  and the network layer fails for a couple of seconds.
 
@@ -33,12 +31,10 @@ NB: Note the connection timeout does not imply of the server is down, the server
 
 """
 
-POOL_COMMAND_TIMEOUT = 15*60 # seconds
+POOL_COMMAND_TIMEOUT = 15 * 60  # seconds
 POOL_MINSIZE = 3
 POOL_MAXSIZE = 5
 CONNECTION_TIMEOUT = 30
-
-
 
 
 async def set_table_comment(table_name=None, value={}, conn_obj=None, **conn_dict):
@@ -62,7 +58,7 @@ async def set_table_comment(table_name=None, value={}, conn_obj=None, **conn_dic
             async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
                                            command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
                 async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn_obj:
-                    val = await  conn_obj.execute(qtext)
+                    val = await conn_obj.execute(qtext)
                     assert val == 'COMMENT'
 
     except Exception as e:
@@ -90,11 +86,12 @@ async def remove_table_comment(table_name=None, conn_obj=None, **conn_dict):
             async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
                                            command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
                 async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn_obj:
-                    val = await  conn_obj.execute(qtext)
+                    val = await conn_obj.execute(qtext)
                     assert val == 'COMMENT'
 
     except Exception as e:
         raise
+
 
 async def get_table_comment(table_name=None, conn_obj=None, **conn_dict):
     """
@@ -109,20 +106,19 @@ async def get_table_comment(table_name=None, conn_obj=None, **conn_dict):
     logger.debug(qtext)
     try:
         if conn_obj is not None:
-            comment_val = await  conn_obj.fetchval(qtext)
+            comment_val = await conn_obj.fetchval(qtext)
             return dict(urlparse.parse_qsl(comment_val))
 
         else:
             async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
                                            command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
                 async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn_obj:
-                    comment_val = await  conn_obj.fetchval(qtext)
+                    comment_val = await conn_obj.fetchval(qtext)
                     return dict(urlparse.parse_qsl(comment_val))
-
-
 
     except Exception as e:
         raise
+
 
 async def should_publish(table_name=None, conn_obj=None, **conn_dict):
     """
@@ -147,11 +143,11 @@ async def should_publish(table_name=None, conn_obj=None, **conn_dict):
                     return None
                 return eval(comment_dict['publish'])
 
+
 def atimeit(func):
 
     async def process(func, *args, **params):
         return await func(*args, **params)
-
 
     async def helper(*args, **params):
         start = time.time()
@@ -188,7 +184,6 @@ def cs2d(url=None):
     :return:
     """
 
-
     # otherwise parse the url as normal
     config = {}
 
@@ -201,8 +196,6 @@ def cs2d(url=None):
     else:
         path, query = path, url.query
 
-
-
     # Handle postgres percent-encoded paths.
     hostname = url.hostname or ''
     if '%2f' in hostname.lower():
@@ -213,7 +206,6 @@ def cs2d(url=None):
         if ":" in hostname:
             hostname = hostname.split(":", 1)[0]
         hostname = hostname.replace('%2f', '/').replace('%2F', '/')
-
 
     port = url.port
 
@@ -230,7 +222,6 @@ def cs2d(url=None):
     return config
 
 
-
 async def table_exists(table_name=None, conn_obj=None, **conn_dict):
     """
     Check whetehr table_name in the given postgres database
@@ -241,57 +232,17 @@ async def table_exists(table_name=None, conn_obj=None, **conn_dict):
     """
     try:
         if conn_obj is not None:
-            val = await  conn_obj.fetch(f'SELECT * from {table_name} LIMIT 1')
+            val = await conn_obj.fetch(f'SELECT * from {table_name} LIMIT 1')
             return True
         else:
             async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
                                            command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
                 async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn_obj:
-                    val = await  conn_obj.fetch(f'SELECT * from {table_name} LIMIT 1')
+                    val = await conn_obj.fetch(f'SELECT * from {table_name} LIMIT 1')
                     return True
     except asyncpg.exceptions.UndefinedTableError:
         return False
 
-#
-# async def create_ingest_table(table_name=None, conn_obj=None, **conn_dict):
-#     """
-#     Creates a table suitable to store info for the ingest process
-#     :param table_name: str, the name of the table
-#     :param conn_obj: an instance of asyncpg.Connection
-#     :param conn_dict: dict whose keys are used top connect to a posgtres database using asyncpg
-#     :return: None
-#     """
-#     create_sql = f'CREATE TABLE {table_name} (' \
-#                  f'filename TEXT NOT NULL,' \
-#                  f'satellite TEXT NOT NULL, ' \
-#                  f'nominal_datetime TIMESTAMP WITHOUT TIME ZONE, ' \
-#                  f'dfb INT NOT NULL, ' \
-#                  f'slot SMALLINT NOT NULL, ' \
-#                  f'channel_name TEXT NOT NULL, ' \
-#                  f'coverage TEXT NOT NULL, ' \
-#                  f'rad_slope REAL NOT NULL,' \
-#                  f'rad_offset REAL NOT NULL,' \
-#                  f'native_scan_start BIGINT NOT NULL,' \
-#                  f'fd_scan_start BIGINT NOT NULL,' \
-#                  f'fd_scan_duration REAL NOT NULL,' \
-#                  f'fd_scan_origin SMALLINT NOT NULL,' \
-#                  f'fd_native_lon0 REAL NOT NULL,' \
-#                  f'mean_value REAL NOT NULL, ' \
-#                  f'ssp REAL NOT NULL,' \
-#                  f'PRIMARY KEY (satellite, dfb, slot, channel_name)' \
-#                  f');'
-#
-#     if conn_obj is not None:
-#         async with conn_obj.transaction():
-#             res = await conn_obj.execute(create_sql)
-#             logger.debug(f'CREATED TABLE {table_name}')
-#     else:
-#         async with asyncpg.create_pool(min_size=1, max_size=1, command_timeout=60, **conn_dict) as pool:
-#             async with pool.acquire(timeout=30) as conn_obj:
-#                 async with conn_obj.transaction():
-#                     res = await conn_obj.execute(create_sql)
-#                     logger.info(f'CREATED TABLE {table_name}')
-#
 
 async def drop_table(table_name=None, conn_obj=None, **conn_dict):
     """
@@ -310,14 +261,14 @@ async def drop_table(table_name=None, conn_obj=None, **conn_dict):
             logger.info(f'DROPPED TABLE {table_name}')
     else:
         async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
-                                           command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
+                                       command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
             async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn_obj:
                 async with conn_obj.transaction():
                     res = await conn_obj.execute(qtext)
                     logger.info(f'DROPPED TABLE {table_name}')
 
 
-async def delete_from_table(table_name=None, conn_obj=None, start_dfb=None, end_dfb=None, start_slot=None, end_slot=None, **conn_dict ):
+async def delete_from_table(table_name=None, conn_obj=None, start_dfb=None, end_dfb=None, start_slot=None, end_slot=None, **conn_dict):
     """
     Delete data from the table_name. Assumes the table has start_df, end_dfb, startt_slot, end_slot columns
     :param table_name: str, table name
@@ -335,13 +286,12 @@ async def delete_from_table(table_name=None, conn_obj=None, start_dfb=None, end_
             res = await conn_obj.execute(sql)
             logger.info(f'{res} records were deleted from table {table_name}')
     async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
-                                           command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
+                                   command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
         async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn_obj:
             async with conn_obj.transaction():
                 res = await conn_obj.execute(sql)
-                logger.info(f'{res} records were deleted from table {table_name}')
-
-
+                logger.info(
+                    f'{res} records were deleted from table {table_name}')
 
 
 async def get_columns(table_name=None, conn_obj=None, **conn_dict):
@@ -374,7 +324,7 @@ async def get_columns(table_name=None, conn_obj=None, **conn_dict):
                       '{{}}'::jsonb
                     ) as properties
                 FROM geometry_columns
-                
+
                 LEFT JOIN columns ON
                   geometry_columns.f_table_schema = columns.table_schema AND
                   geometry_columns.f_table_name = columns.table_name AND
@@ -386,12 +336,11 @@ async def get_columns(table_name=None, conn_obj=None, **conn_dict):
 
     if conn_obj is None:
         async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
-                                           command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
+                                       command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
             async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn:
                 return await conn.fetch(qtext)
     else:
         return await conn_obj.fetch(qtext)
-
 
 
 async def get_columns2(table_name=None, conn_obj=None, **conn_dict):
@@ -424,12 +373,9 @@ async def get_columns2(table_name=None, conn_obj=None, **conn_dict):
             f"ORDER BY\n" \
             f"  attnum ASC;"
 
-
-
-
     if conn_obj is None:
         async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
-                                           command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
+                                       command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
             async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn:
                 return await conn.fetch(qtext)
     else:
@@ -446,10 +392,10 @@ async def database_exists(host=None, user=None, password=None, database=None, **
     :return: True id the given database exists, False otherwise
     """
     try:
-        conn = await asyncpg.connect(host=host,user=user, password=password, database=database,
+        conn = await asyncpg.connect(host=host, user=user, password=password, database=database,
                                      command_timeout=POOL_COMMAND_TIMEOUT, timeout=CONNECTION_TIMEOUT,
                                      **kwargs)
-        await  conn.close()
+        await conn.close()
         return True
     except asyncpg.InvalidCatalogNameError:
         return False
@@ -469,8 +415,8 @@ async def list_databases(host=None, user=None, password=None, **kwargs):
 
     qtext = 'SELECT datname FROM pg_database WHERE datistemplate = false;'
     conn = await asyncpg.connect(host=host, user=user, password=password, database='template1',
-                                 command_timeout=POOL_COMMAND_TIMEOUT, timeout=CONNECTION_TIMEOUT
-                                 **kwargs)
+                                 command_timeout=POOL_COMMAND_TIMEOUT, timeout=CONNECTION_TIMEOUT **
+                                 kwargs)
 
     res = await conn.fetch(qtext)
     await conn.close()
@@ -499,17 +445,19 @@ async def fast_insert(table_name=None, records=None, timeout=None, conn_obj=None
     if conn_obj is not None:
         tables = [e['tablename'] for e in await list_tables(conn_obj=conn_obj)]
         if not table_name in tables:
-            raise Exception(f'Table "{table_name}" does not exist in database "{database}" on host "{host}"')
+            raise Exception(
+                f'Table "{table_name}" does not exist in database "{database}" on host "{host}"')
         async with conn_obj.transaction():
             nrec = await conn_obj.copy_records_to_table(table_name, records=records, timeout=timeout)
 
     else:
         async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
-                                           command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
+                                       command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
             async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn:
                 tables = [e['tablename'] for e in await list_tables(conn)]
                 if not table_name in tables:
-                    raise Exception(f'Table "{table_name}" does not exist in database "{database}" on host "{host}"')
+                    raise Exception(
+                        f'Table "{table_name}" does not exist in database "{database}" on host "{host}"')
                 async with conn.transaction():
                     nrec = await conn.copy_records_to_table(table_name, records=records, timeout=timeout)
 
@@ -550,7 +498,8 @@ async def upsert(table_name=None, records=None, timeout=None, conn_obj=None, **c
                     f'Cannot use upsert on server {host}. Remote Postgres server version is {version_info} ')
             tables = [e['tablename'] for e in await list_tables(conn_obj=conn_obj)]
             if not table_name in tables:
-                raise Exception(f'Table "{table_name}" does not exist in database "{database}" on host "{host}"')
+                raise Exception(
+                    f'Table "{table_name}" does not exist in database "{database}" on host "{host}"')
             cols = await get_columns2(table_name=table_name, conn_obj=conn_obj)
             col_names = list()
             upsert_col_fixes = list()
@@ -565,24 +514,28 @@ async def upsert(table_name=None, records=None, timeout=None, conn_obj=None, **c
                       f'\nSET {", ".join(upsert_col_fixes)}'
 
                 await conn_obj.executemany(sql, records, timeout=timeout)
-                logger.debug(f'{len(records)} records were written to database for channel {records[0][6]}')
+                logger.debug(
+                    f'{len(records)} records were written to database for channel {records[0][6]}')
         else:
             async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
                                            command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
                 async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn:
                     version_info = conn.get_server_version()
                     if version_info.major < 10 and version_info.minor < 5:
-                        raise Exception(f'Cannot use upsert on server {host}. Remote Postgres server version is {version_info} ')
+                        raise Exception(
+                            f'Cannot use upsert on server {host}. Remote Postgres server version is {version_info} ')
                     tables = [e['tablename'] for e in await list_tables(conn)]
                     if not table_name in tables:
-                        raise Exception(f'Table "{table_name}" does not exist in database "{database}" on host "{host}"')
-                    cols =  await get_columns2(table_name=table_name, conn_obj=conn)
+                        raise Exception(
+                            f'Table "{table_name}" does not exist in database "{database}" on host "{host}"')
+                    cols = await get_columns2(table_name=table_name, conn_obj=conn)
                     col_names = list()
                     upsert_col_fixes = list()
                     for c in cols:
                         col_name = c["column_name"]
                         col_names.append(col_name)
-                        upsert_col_fixes.append(f'{col_name}=EXCLUDED.{col_name}')
+                        upsert_col_fixes.append(
+                            f'{col_name}=EXCLUDED.{col_name}')
                     async with conn.transaction():
                         sql = f'INSERT INTO {table_name}({", ".join(col_names)})' \
                               f'\nVALUES ({", ".join([f"${i+1}" for i in  range(len(col_names))])})' \
@@ -590,7 +543,8 @@ async def upsert(table_name=None, records=None, timeout=None, conn_obj=None, **c
                               f'\nSET {", ".join(upsert_col_fixes)}'
 
                         await conn.executemany(sql, records, timeout=timeout)
-                        logger.debug(f'{len(records)} records were written to database for channel {records[0][5]}')
+                        logger.debug(
+                            f'{len(records)} records were written to database for channel {records[0][5]}')
 
     except socket.gaierror as se:
         host = conn_dict['host']
@@ -603,6 +557,7 @@ async def upsert(table_name=None, records=None, timeout=None, conn_obj=None, **c
     except Exception as e:
         raise
 
+
 async def list_schemas(conn_obj=None, **conn_dict):
     """
     List all available schemas using either the conn-obj or conn_string
@@ -613,16 +568,15 @@ async def list_schemas(conn_obj=None, **conn_dict):
     """
     qtext = f'SELECT schema_name FROM information_schema.schemata'
     if conn_obj is not None:
-        res =  await conn_obj.fetch(qtext)
+        res = await conn_obj.fetch(qtext)
     else:
         async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
-                                           command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
+                                       command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
             async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn_obj:
                 async with conn_obj.transaction():
-                    res =  await conn_obj.fetch(qtext)
+                    res = await conn_obj.fetch(qtext)
 
     return tuple(set([e['schema_name'] for e in res]) - set(['information_schema', 'pg_catalog']))
-
 
 
 async def list_tables(conn_obj=None, schema=None, **conn_dict):
@@ -646,11 +600,11 @@ async def list_tables(conn_obj=None, schema=None, **conn_dict):
         if schema:
             available_schemas = await list_schemas(conn_obj=conn_obj)
             assert schema in available_schemas, f'schema "{schema}" does not exist in {conn_obj} '
-        res =  await conn_obj.fetch(qtext)
+        res = await conn_obj.fetch(qtext)
     else:
 
         async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
-                                           command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
+                                       command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
             async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn_obj:
                 if schema:
                     available_schemas = await list_schemas(conn_obj=conn_obj)
@@ -660,6 +614,7 @@ async def list_tables(conn_obj=None, schema=None, **conn_dict):
 
     table_names = [f'{e["schemaname"]}.{e["tablename"]}' for e in res]
     return table_names
+
 
 async def get_bbox(table_name=None, geom_column=None, srid=None, conn_obj=None, **conn_dict):
     """
@@ -680,7 +635,6 @@ async def get_bbox(table_name=None, geom_column=None, srid=None, conn_obj=None, 
     else:
         extq = f'ST_Extent({geom_column})'
 
-
     if srid is None or srid == 4326:
 
         qtext = f'''
@@ -688,10 +642,10 @@ async def get_bbox(table_name=None, geom_column=None, srid=None, conn_obj=None, 
                         SELECT {extq} as extent
                         FROM {table_name}
                     )
-                    SELECT 
-                        ST_Xmin(bbox.extent) as xmin,  
-                        ST_Ymin(bbox.extent) as ymin,  
-                        ST_Xmax(bbox.extent) as xmax,  
+                    SELECT
+                        ST_Xmin(bbox.extent) as xmin,
+                        ST_Ymin(bbox.extent) as ymin,
+                        ST_Xmax(bbox.extent) as xmax,
                         ST_Ymax(bbox.extent) as ymax
                     FROM bbox;
             '''
@@ -701,10 +655,10 @@ async def get_bbox(table_name=None, geom_column=None, srid=None, conn_obj=None, 
                                 SELECT ST_Transform(ST_SetSRID({extq}, {srid}), 4326) as extent
                                 FROM {table_name}
                             )
-                            SELECT 
-                                ST_Xmin(bbox.extent) as xmin,  
-                                ST_Ymin(bbox.extent) as ymin,  
-                                ST_Xmax(bbox.extent) as xmax,  
+                            SELECT
+                                ST_Xmin(bbox.extent) as xmin,
+                                ST_Ymin(bbox.extent) as ymin,
+                                ST_Xmax(bbox.extent) as xmax,
                                 ST_Ymax(bbox.extent) as ymax
                             FROM bbox;
                     '''
@@ -718,7 +672,7 @@ async def get_bbox(table_name=None, geom_column=None, srid=None, conn_obj=None, 
             async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn_obj:
                 async with conn_obj.transaction():
                     resl = await conn_obj.fetch(qtext)
-    res =resl[0]
+    res = resl[0]
 
     return list((res['xmin'], res['ymin'], res['xmax'], res['ymax']))
 
@@ -750,15 +704,18 @@ async def get_table_cfg2(conn_obj=None, table_name=None, prop_filter_prefix='pub
         print(geom_columns, table_name)
         attr_columns = [e for e in columns if 'geometry' not in e['data_type']]
         if len(geom_columns) == 0:
-            logger.info(f'Skipping table {table_name}. No geometry columns detected')
+            logger.info(
+                f'Skipping table {table_name}. No geometry columns detected')
             return
 
         if len(geom_columns) == 1:
             geom_column = geom_columns[0]['column_name']
             try:
-                table_srid = int(geom_columns[0]['data_type'][1:-1].split(',')[-1])
+                table_srid = int(
+                    geom_columns[0]['data_type'][1:-1].split(',')[-1])
             except Exception:
-                logger.error(f'Skipping table {table_name}. Could not extract srid from geometry column "{geom_column}"')
+                logger.error(
+                    f'Skipping table {table_name}. Could not extract srid from geometry column "{geom_column}"')
                 return
         else:
             # prefer 3857
@@ -766,32 +723,34 @@ async def get_table_cfg2(conn_obj=None, table_name=None, prop_filter_prefix='pub
             if any(expr):
                 geom_column = geom_columns[expr.index(True)]['column_name']
                 try:
-                    table_srid = int(geom_columns[expr.index(True)]['data_type'][1:-1].split(',')[-1])
+                    table_srid = int(geom_columns[expr.index(True)]
+                                     ['data_type'][1:-1].split(',')[-1])
                 except Exception:
                     logger.error(
                         f'Could not extract srid from geometry column "{geom_column}"')
                     return
-
 
             else:
                 expr = ['4326' in e['data_type'] for e in geom_columns]
 
                 if any(expr):
                     geom_column = geom_columns[expr.index(True)]['column_name']
-                    table_srid = int(geom_columns[expr.index(True)]['data_type'][1:-1].split(',')[-1])
+                    table_srid = int(geom_columns[expr.index(True)]
+                                     ['data_type'][1:-1].split(',')[-1])
                 else:
                     # decide what to do, usually get the first available is the best option
                     geom_column = geom_columns[0]['column_name']
-                    table_srid = int(geom_columns[0]['data_type'][1:-1].split(',')[-1])
+                    table_srid = int(
+                        geom_columns[0]['data_type'][1:-1].split(',')[-1])
 
         rd = dict(id=table_name, schema=schema, table=tname)
 
         try:
             bb = await get_bbox(table_name=table_name, geom_column=geom_column, conn_obj=conn_obj)
         except Exception as e:
-            logger.error(f'Failed to fetch bounding box for {table_name} because {e}. Skiping...')
+            logger.error(
+                f'Failed to fetch bounding box for {table_name} because {e}. Skiping...')
             return
-
 
         rd['bounds'] = bb
         rd['srid'] = table_srid
@@ -807,44 +766,53 @@ async def get_table_cfg2(conn_obj=None, table_name=None, prop_filter_prefix='pub
         # todo rule for filtering publishable cols
         for c in attr_columns:
             if prop_filter_prefix is not None:
-                if not c['column_name'].startswith(prop_filter_prefix): continue
+                if not c['column_name'].startswith(prop_filter_prefix):
+                    continue
             props[c['column_name']] = c['type_name']
         rd['properties'] = props
 
-        #return {table_name: rd}
+        # return {table_name: rd}
 
     else:
 
         async with asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
-                                           command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
+                                       command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict) as pool:
             async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn_obj:
                 columns = await get_columns2(table_name=table_name, conn_obj=conn_obj)
-                geom_columns = [e for e in columns if 'geometry' in e['data_type']]
-                attr_columns = [e for e in columns if 'geometry' not in e['data_type']]
+                geom_columns = [
+                    e for e in columns if 'geometry' in e['data_type']]
+                attr_columns = [
+                    e for e in columns if 'geometry' not in e['data_type']]
                 if len(geom_columns) == 0:
-                    logger.info(f'Skipping table {table_name}. No geometry columns detected')
+                    logger.info(
+                        f'Skipping table {table_name}. No geometry columns detected')
                     return
-                if len(geom_columns) ==  1:
+                if len(geom_columns) == 1:
                     geom_column = geom_columns[0]['column_name']
-                    table_srid = int(geom_columns[0]['data_type'][1:-1].split(',')[-1])
+                    table_srid = int(
+                        geom_columns[0]['data_type'][1:-1].split(',')[-1])
                 else:
-                    #prefer 3857
+                    # prefer 3857
                     expr = ['3857' in e['data_type'] for e in geom_columns]
 
                     if any(expr):
-                        geom_column = geom_columns[expr.index(True)]['column_name']
-                        table_srid  = int(geom_columns[expr.index(True)]['data_type'][1:-1].split(',')[-1])
+                        geom_column = geom_columns[expr.index(
+                            True)]['column_name']
+                        table_srid = int(geom_columns[expr.index(True)]
+                                         ['data_type'][1:-1].split(',')[-1])
 
                     else:
                         expr = ['4326' in e['data_type'] for e in geom_columns]
                         if any(expr):
-                            geom_column = geom_columns[expr.index(True)]['column_name']
-                            table_srid = int(geom_columns[expr.index(True)]['data_type'][1:-1].split(',')[-1])
+                            geom_column = geom_columns[expr.index(
+                                True)]['column_name']
+                            table_srid = int(geom_columns[expr.index(
+                                True)]['data_type'][1:-1].split(',')[-1])
                         else:
-                            #decide what to do, ususally get the first available is the best option
+                            # decide what to do, ususally get the first available is the best option
                             geom_column = geom_columns[0]['column_name']
-                            table_srid = int(geom_columns[0]['data_type'][1:-1].split(',')[-1])
-
+                            table_srid = int(
+                                geom_columns[0]['data_type'][1:-1].split(',')[-1])
 
                 rd = dict(id=table_name, schema=schema, table=tname)
 
@@ -852,8 +820,7 @@ async def get_table_cfg2(conn_obj=None, table_name=None, prop_filter_prefix='pub
                 rd['bounds'] = bb
                 rd['srid'] = table_srid
                 rd['geometry_column'] = geom_column
-                rd['id_column']=None
-
+                rd['id_column'] = None
 
                 rd['extent'] = 4096
                 rd['buffer'] = 64
@@ -861,20 +828,18 @@ async def get_table_cfg2(conn_obj=None, table_name=None, prop_filter_prefix='pub
                 rd['clip_geometry'] = True
                 props = dict()
 
-                #todo rule for filtering publishable cols
+                # todo rule for filtering publishable cols
                 for c in attr_columns:
                     if prop_filter_prefix is not None:
-                        if not c['column_name'].startswith(prop_filter_prefix):continue
+                        if not c['column_name'].startswith(prop_filter_prefix):
+                            continue
                     props[c['column_name']] = c['type_name']
                 rd['properties'] = props
 
+    return {f'{table_name}:': rd}
 
 
-    return {f'{table_name}:':rd}
-
-
-
-#@atimeit
+# @atimeit
 async def get_table_cfg(conn_obj=None, table_name=None, prop_filter_prefix='pub', **conn_dict):
     """
     Create a config dictionary suitable for configuring martin vector tile service
@@ -899,16 +864,17 @@ async def get_table_cfg(conn_obj=None, table_name=None, prop_filter_prefix='pub'
 
     if conn_obj is None:
         pool = await asyncpg.create_pool(min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
-                                       command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict)
+                                         command_timeout=POOL_COMMAND_TIMEOUT, **conn_dict)
 
-        conn_obj =  await pool.acquire(timeout=CONNECTION_TIMEOUT)
+        conn_obj = await pool.acquire(timeout=CONNECTION_TIMEOUT)
 
     columns = await get_columns(table_name=table_name, conn_obj=conn_obj)
     if not columns:
-        logger.info(f'Skipping table {table_name}. No geometry columns detected')
+        logger.info(
+            f'Skipping table {table_name}. No geometry columns detected')
         return
     srid = None
-    for r in columns: # prefer/pick the 3857 geom or the last in case 3857 is not used and more than 1
+    for r in columns:  # prefer/pick the 3857 geom or the last in case 3857 is not used and more than 1
         srid = r['srid']
         geom_column = r['geom_column']
         geom_type = r['type']
@@ -920,7 +886,8 @@ async def get_table_cfg(conn_obj=None, table_name=None, prop_filter_prefix='pub'
     try:
         bb = await get_bbox(table_name=table_name, geom_column=geom_column, srid=srid, conn_obj=conn_obj)
     except Exception as e:
-        logger.error(f'Failed to fetch bounding box for {table_name} because {e}. Skiping...')
+        logger.error(
+            f'Failed to fetch bounding box for {table_name} because {e}. Skiping...')
         return
 
     tbl_dict['bounds'] = bb
@@ -946,32 +913,9 @@ async def get_table_cfg(conn_obj=None, table_name=None, prop_filter_prefix='pub'
         await conn_obj.close()
         await pool.close()
 
-    return {f'{table_name}:':tbl_dict}
-#
-#
-# def dump2yaml(cfg_dict_in=None, out_ymal_path=None):
-#     """
-#     Dump a config dictionary for martin tile server into a yaml config
-#     :param cfg_dict_in:
-#     :return:
-#     """
-#
-#     with open(out_ymal_path, 'w+') as outyamlf:
-#
-#         for k, v in cfg_dict_in.items():
-#             print(f'storing {k} {type(v)}')
-#             if isinstance(v, list):
-#                 outyamlf.write(f'{yaml.safe_dump({k:v}, allow_unicode=True, default_flow_style=False, sort_keys=False)}')
-#             elif isinstance(v, dict):
-#                 outyamlf.write(f'{yaml.safe_dump({k:v}, allow_unicode=True, default_flow_style=False, sort_keys=False)}')
-#             else:
-#
-#                 outyamlf.write(f'{yaml.safe_dump({k:v}, allow_unicode=True, default_flow_style=False, sort_keys=False)}')
-#
-#
+    return {f'{table_name}:': tbl_dict}
 
 
-                    
 def fetch_conn_string(from_file='./.env', ssl_require=True):
     """
     reads the .env into a dict
@@ -994,7 +938,6 @@ def read_conf(path=None):
         return yaml.full_load(f)
 
 
-
 def dump(input_dict, depth=0, content=[]):
     """
     Recursively dumps a dictionary with he configuration into  YAML format
@@ -1005,16 +948,17 @@ def dump(input_dict, depth=0, content=[]):
     :return:
     """
     spacer = ''.join(depth * [' '])
-    for k,v in input_dict.items():
+    for k, v in input_dict.items():
         if isinstance(v, dict):
             content.append(f'\n{spacer}{k}\n')
-            dump(v, depth=depth+2, content=content)
+            dump(v, depth=depth + 2, content=content)
         else:
-            content.append(f'{spacer}{k}: {str(v).lower() if type(v) is bool else v}\n')
+            content.append(
+                f'{spacer}{k}: {str(v).lower() if type(v) is bool else v}\n')
     return '\n'.join(content)
 
 
-async def create_config_dict( dsn=None,  schemas=None, prop_filter_prefix=None, **conn_dict):
+async def create_config_dict(dsn=None, schemas=None, prop_filter_prefix=None, **conn_dict):
     """
     Create a configuration dictionary for all table sources in a postgis database.
     If schema is provided the config is generated for the given schema
@@ -1026,11 +970,13 @@ async def create_config_dict( dsn=None,  schemas=None, prop_filter_prefix=None, 
     """
     schemas_cfg = {}
     if schemas:
-        logger.info(f'Creating config dict for tables in \"{", ".join(schemas)}" schemas ...')
+        logger.info(
+            f'Creating config dict for tables in \"{", ".join(schemas)}" schemas ...')
     else:
-        logger.info(f'Creating config dict for tables in all available schemas ...')
+        logger.info(
+            f'Creating config dict for tables in all available schemas ...')
     async with asyncpg.create_pool(dsn=dsn, min_size=POOL_MINSIZE, max_size=POOL_MAXSIZE,
-                                   command_timeout=POOL_COMMAND_TIMEOUT,  ) as pool:
+                                   command_timeout=POOL_COMMAND_TIMEOUT,) as pool:
         logger.debug('Connecting to database...')
         async with pool.acquire(timeout=CONNECTION_TIMEOUT) as conn_obj:
             available_schemas = await list_schemas(conn_obj=conn_obj)
@@ -1045,18 +991,20 @@ async def create_config_dict( dsn=None,  schemas=None, prop_filter_prefix=None, 
                 else:
                     for table_name in await list_tables(conn_obj=conn_obj, schema=schema):
                         try:
-                            will_publish = await should_publish(table_name=table_name,conn_obj=conn_obj)
+                            will_publish = await should_publish(table_name=table_name, conn_obj=conn_obj)
                         except Exception as ee:
-                            logger.error(f'Failed to fetch comments for table {table_name} because {ee}. Skipping...')
+                            logger.error(
+                                f'Failed to fetch comments for table {table_name} because {ee}. Skipping...')
                             continue
                         if will_publish == False:
-                            logger.info(f'{table_name} was marked as not publishable and will be skipped')
+                            logger.info(
+                                f'{table_name} was marked as not publishable and will be skipped')
                             continue
                         table_cfg = await get_table_cfg(conn_obj=conn_obj, table_name=table_name, prop_filter_prefix=prop_filter_prefix)
                         if table_cfg:
                             schemas_cfg.update(table_cfg)
 
-    return {'table_sources:':schemas_cfg}
+    return {'table_sources:': schemas_cfg}
 
 
 def create_general_config(listen_addresses="'$LISTEN_ADDRESSES'", connection_string="'$DATABASE_URL'",
@@ -1078,96 +1026,28 @@ def create_general_config(listen_addresses="'$LISTEN_ADDRESSES'", connection_str
     """
     return locals()
 
-def main():
-    import os
-    logging.basicConfig()
-    sthandler = logging.StreamHandler()
-    sthandler.setFormatter(logging.Formatter('%(asctime)s-%(filename)s:%(funcName)s:%(lineno)d:%(levelname)s:%(message)s', "%Y-%m-%d %H:%M:%S"))
 
-    # remove the default stream handler and add the new on too it.
-    logger.handlers.clear()
-    logger.addHandler(sthandler)
+if __name__ == '__main__':
+    prop_filter_prefix = ''
+    schemas = ['global']
+    out_yaml_file = 'out.yaml'
 
-    logger.setLevel('INFO')
-    logger.name = os.path.split(__file__)[-1]
-
-    import argparse as ap
-
-    class HelpParser(ap.ArgumentParser):
-        def error(self, message):
-
-            self.print_help()
-            exit(0)
-
-    arg_parser = HelpParser(formatter_class=ap.ArgumentDefaultsHelpFormatter)
-    arg_parser.add_argument('-dsn', '--postgres_dsn_string', type=str, default=None,
-                            help='Connection string to Postgres server', )
-    arg_parser.add_argument('-pfp', '--prop_filter_prefix', type=str,  default=None,
-                            help='S tring to filter column for every table. \nColumn that start with this string will be added to the configuration', )
-    arg_parser.add_argument('-s', '--database_schemas', default=None,
-                            help='A list of schema names',
-                            type=str, nargs='+', )
-    arg_parser.add_argument('-igc', '--include_general_config',
-                            help='falg to include the general config or no', type=bool, default=True
-                            )
-    arg_parser.add_argument('-o', '--out_yaml_file',
-                            help='Full path to the config file to be created. If not supplied the YAML fill be dumped to'
-                                 'stdout ', type=str,
-                            default=None)
-
-    arg_parser.add_argument('-ufs', '--upload_to_file_share',
-                            help='The name of the Azure file share where the config will be uploaded', type=str,
-                            default=None,required=False)
-
-    arg_parser.add_argument('-surl', '--sas_url',
-                            help='A full SAS URL of the Azure file share where the config will be uploaded', type=str,
-                            default=None, required=False)
-    
-    arg_parser.add_argument('-asa', '--azure_storage_account',
-                            help='The name of Azure Storage Account', type=str,
-                            default=None,required=False)
-
-    #parse and collect args
-    args = arg_parser.parse_args()
-    dsn = args.postgres_dsn_string or os.environ.get('DATABASE_CONNECTION', None)
-    prop_filter_prefix = args.prop_filter_prefix
-    schemas = args.database_schemas
-    include_general_config = args.include_general_config
-    out_yaml_file = args.out_yaml_file
-    azure_file_share_name = args.upload_to_file_share or os.environ.get('AZURE_FILESHARE_NAME', None)
-    sas_url=args.sas_url or os.environ.get('AZURE_FILESHARE_SASURL', None)
-    azure_storage_account=args.azure_storage_account or os.environ.get('AZURE_STORAGE_ACCOUNT', None)
-
-    # transform schemas into iter
     schemas = set(schemas)
 
-    # execute
-
-
-    # execute
-    if not dsn:
-        raise Exception(f'PostGIS database connection string is required through either -dsn option or DATABASE_CONNECTION of environmental variable.')
-
     config = create_general_config()
-
-    schemas_cfg = asyncio.run(create_config_dict(dsn=dsn, schemas=schemas, prop_filter_prefix=prop_filter_prefix ))
-
+    config_dict = create_config_dict(
+        dsn=database, schemas=schemas, prop_filter_prefix=prop_filter_prefix)
+    schemas_cfg = asyncio.run(config_dict)
     config.update(schemas_cfg)
 
     yaml_config = dump(config)
     logger.info(f'Writing config to {out_yaml_file}')
     with open(out_yaml_file, 'w+') as f:
         f.write(yaml_config)
-        #yaml.safe_dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
-    if not (sas_url and azure_file_share_name and azure_storage_account): # there is a default share mconfig
-        logger.info(f'Could not get connections of Azure Storage. It requires to configure a SAS URL, a file share name and a Azure Storage Account Name through either CLI options or environmental variables.')
-        exit(0)
-
-    from martin_config.azfile import upload_cfg_file
-    upload_cfg_file(
-        azure_storage_account=azure_storage_account,
-        sas_url=sas_url,
-        share_name=azure_file_share_name,
-        cfg_file_path=out_yaml_file
-    )
+    # upload_cfg_file(
+    #     azure_storage_account=azure_account,
+    #     sas_url=azure_sas_url,
+    #     share_name=azure_container,
+    #     cfg_file_path=out_yaml_file
+    # )

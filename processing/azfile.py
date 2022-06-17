@@ -1,7 +1,5 @@
 import os
-
-from azure.storage.fileshare import  ShareServiceClient
-
+from azure.storage.fileshare import ShareServiceClient
 
 
 def upload_cfg_file(
@@ -27,8 +25,10 @@ def upload_cfg_file(
 
     assert azure_storage_account in sas_url, f'Invalid url={sas_url}'
 
-    assert cfg_file_path not in ('', None), f'Invalid config_file_path={cfg_file_path}'
-    assert os.path.exists(cfg_file_path), f'cfg_file_path does not exist on local file system'
+    assert cfg_file_path not in (
+        '', None), f'Invalid config_file_path={cfg_file_path}'
+    assert os.path.exists(
+        cfg_file_path), f'cfg_file_path does not exist on local file system'
 
     if file_name is None:
         file_name = os.path.split(cfg_file_path)[-1]
@@ -43,5 +43,3 @@ def upload_cfg_file(
             with sc.get_directory_client() as sdc:
                 with open(cfg_file_path, 'rb') as cfgf:
                     sdc.upload_file(file_name=file_name, data=cfgf.read())
-
-
