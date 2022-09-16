@@ -1,5 +1,4 @@
 import logging
-logger = logging.getLogger()
 import asyncpg
 import asyncio
 import json
@@ -14,7 +13,7 @@ except ImportError:
     import urllib.parse as urlparse
 
 
-
+logger = logging.getLogger()
 """
 This module provides asyncpg based functionality  to interact with the postgres database for the purpopse managing
 martin server
@@ -887,7 +886,7 @@ async def get_table_cfg(conn_obj=None, table_name=None, prop_filter_prefix='pub'
     :return: dict with the configuration as per https://github.com/urbica/martin#configuration-file
 
     NB: martin support tables/layers with more than one geometry column. This is desirabvle because
-    the web mercator projectin EPSG 3857 should be used for displaying and is not suitable for
+    the web mercator projection EPSG 3857 should be used for displaying and is not suitable for
     performing spatial computations
 
 
@@ -997,7 +996,7 @@ def read_conf(path=None):
 
 def dump(input_dict, depth=0, content=[]):
     """
-    Recursively dumps a dictionary with he configuration into  YAML format
+    Recursively dumps a dictionary containing the server configuration into  YAML format
 
     :param input_dict: dict, input
     :param depth: int, default=0, the depth of each line/elemnt in the dictionary. Use to insert \t characters
@@ -1141,12 +1140,11 @@ def main():
     # transform schemas into iter
     schemas = set(schemas)
 
-    # execute
-
 
     # execute
     if not dsn:
-        raise Exception(f'PostGIS database connection string is required through either -dsn option or DATABASE_CONNECTION of environmental variable.')
+        raise Exception(f'PostGIS database connection string is required through either -dsn option or '
+                        f'DATABASE_CONNECTION of environmental variable.')
 
     config = create_general_config()
 
@@ -1161,7 +1159,8 @@ def main():
         #yaml.safe_dump(config, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
 
     if not (sas_url and azure_file_share_name and azure_storage_account): # there is a default share mconfig
-        logger.info(f'Could not get connections of Azure Storage. It requires to configure a SAS URL, a file share name and a Azure Storage Account Name through either CLI options or environmental variables.')
+        logger.info(f'Could not connnect to Azure Storage.'
+                    f'It requires to configure a SAS URL, a file share name and a Azure Storage Account Name through either CLI options or environmental variables.')
         exit(0)
 
     from martin_config.azfile import upload_cfg_file
