@@ -251,46 +251,6 @@ async def table_exists(table_name=None, conn_obj=None, **conn_dict):
     except asyncpg.exceptions.UndefinedTableError:
         return False
 
-#
-# async def create_ingest_table(table_name=None, conn_obj=None, **conn_dict):
-#     """
-#     Creates a table suitable to store info for the ingest process
-#     :param table_name: str, the name of the table
-#     :param conn_obj: an instance of asyncpg.Connection
-#     :param conn_dict: dict whose keys are used top connect to a posgtres database using asyncpg
-#     :return: None
-#     """
-#     create_sql = f'CREATE TABLE {table_name} (' \
-#                  f'filename TEXT NOT NULL,' \
-#                  f'satellite TEXT NOT NULL, ' \
-#                  f'nominal_datetime TIMESTAMP WITHOUT TIME ZONE, ' \
-#                  f'dfb INT NOT NULL, ' \
-#                  f'slot SMALLINT NOT NULL, ' \
-#                  f'channel_name TEXT NOT NULL, ' \
-#                  f'coverage TEXT NOT NULL, ' \
-#                  f'rad_slope REAL NOT NULL,' \
-#                  f'rad_offset REAL NOT NULL,' \
-#                  f'native_scan_start BIGINT NOT NULL,' \
-#                  f'fd_scan_start BIGINT NOT NULL,' \
-#                  f'fd_scan_duration REAL NOT NULL,' \
-#                  f'fd_scan_origin SMALLINT NOT NULL,' \
-#                  f'fd_native_lon0 REAL NOT NULL,' \
-#                  f'mean_value REAL NOT NULL, ' \
-#                  f'ssp REAL NOT NULL,' \
-#                  f'PRIMARY KEY (satellite, dfb, slot, channel_name)' \
-#                  f');'
-#
-#     if conn_obj is not None:
-#         async with conn_obj.transaction():
-#             res = await conn_obj.execute(create_sql)
-#             logger.debug(f'CREATED TABLE {table_name}')
-#     else:
-#         async with asyncpg.create_pool(min_size=1, max_size=1, command_timeout=60, **conn_dict) as pool:
-#             async with pool.acquire(timeout=30) as conn_obj:
-#                 async with conn_obj.transaction():
-#                     res = await conn_obj.execute(create_sql)
-#                     logger.info(f'CREATED TABLE {table_name}')
-#
 
 async def drop_table(table_name=None, conn_obj=None, **conn_dict):
     """
