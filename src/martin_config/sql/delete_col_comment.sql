@@ -1,0 +1,1 @@
+COMMENT ON COLUMN {table}.{column} IS NULL;

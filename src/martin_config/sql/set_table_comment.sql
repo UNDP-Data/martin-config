@@ -1,0 +1,1 @@
+COMMENT ON TABLE {table} IS '{url_encoded_value}';

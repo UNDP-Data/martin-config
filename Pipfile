@@ -8,6 +8,7 @@ asyncpg = "0.21.0"
 pyyaml = "6.0"
 asyncio = "3.4.3"
 azure-storage-file-share = "12.1.1"
+python-dotenv = "*"
 
 [dev-packages]
 pipenv-setup = "2.1"

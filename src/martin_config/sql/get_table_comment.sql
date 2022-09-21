@@ -1,0 +1,1 @@
+SELECT obj_description('{table}'::regclass) AS comment;
