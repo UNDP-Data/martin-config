@@ -21,6 +21,7 @@ classifiers = [
 dependencies = [
     "asyncpg", "pyyaml", "dotenv"
 ]
+dynamic = ["version"]
 [project.scripts]
     martincfg = "martin_config:martincfg"
 
@@ -29,7 +30,7 @@ azure = ["azure-storage-file-share"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
-dynamic = ["version"]
+
 
 [tool.setuptools.dynamic]
 version = {attr = "martin_config.__version__"}
