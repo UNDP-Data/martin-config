@@ -43,18 +43,25 @@ def main():
     parser.add_argument('-d', '--debug', action='store_true',
                         help='Set log level to debug'
                         )
+    parser.add_argument('-sfs', '--skip-function-sources',  action='store_true',
+                        help='Do not create  config for function sources'
+                        )
 
     args = parser.parse_args(args=None if sys.argv[1:] else ['--help'])
 
     schemas = args.database_schema
     schemas = set(schemas[0].split(',') if ',' in schemas[0] else schemas)
     config_file = args.out_cfg_file
+    skip_function_sources = args.skip_function_sources
+    print(skip_function_sources)
     debug = args.debug
     if debug:
         logger.debug('Setting log level to DEBUG')
         logger.setLevel(logging.DEBUG)
     else:
         logger.setLevel(logging.INFO)
+
+
     signed_azure_file_share_url = os.environ.get('AZURE_FILESHARE_SASURL', None)
     dsn = os.environ.get('POSTGRES_DSN', None)
 
@@ -79,6 +86,7 @@ def main():
     schemas_config = asyncio.run(config.create_config_dict(
         dsn=dsn,
         schemas=schemas,
+        skip_function_sources=skip_function_sources
     ))
 
     general_config.update(schemas_config)

@@ -31,9 +31,11 @@ azure = ["azure-storage-file-share"]
 [tool.setuptools.packages.find]
 where = ["src"]
 
-
 [tool.setuptools.dynamic]
 version = {attr = "martin_config.__version__"}
+
+[tool.setuptools.package-data]
+"martin_config.sql" = ["*.sql"]
 
 
 

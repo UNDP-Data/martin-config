@@ -2,12 +2,13 @@ from martin_config import utils, db
 import logging
 import asyncpg
 logger = logging.getLogger(__name__)
-async def create_config_dict(dsn=None, schemas=None, **conn_dict):
+async def create_config_dict(dsn=None, schemas=None, skip_function_sources=False, **conn_dict):
     """
     Create a configuration dictionary for all table sources in a postgis database.
     If schema is provided the config is generated for the given schema
     :param dsn, str, a Postgres dsn  connection string
     :param schemas: iter of strings representing schemas in db
+    :param skip_function_sources, bool, if True not config will be generated for the function sources
     :param conn_dict, dict, a dict with items containing  info  necessary to connect to a Postgres server
     :return: a dictionary with configuration for  tables sources and function sources
     """
@@ -23,13 +24,13 @@ async def create_config_dict(dsn=None, schemas=None, **conn_dict):
     else:
         logger.info(
             f'Creating config dict for tables in all available schemas ...')
-
+    funcs_cfg = {}
     async with asyncpg.create_pool(dsn=dsn, min_size=utils.POOL_MINSIZE, max_size=utils.POOL_MAXSIZE,
                                    command_timeout=utils.POOL_COMMAND_TIMEOUT, ) as pool:
         logger.debug('Connecting to database...')
         async with pool.acquire(timeout=utils.CONNECTION_TIMEOUT) as conn_obj:
             available_schemas = await db.list_schemas(conn_obj=conn_obj)
-            available_schemas = set(available_schemas) - set(['public'])
+            #available_schemas = set(available_schemas) - set(['public'])
             if not schemas:
                 schemas = available_schemas
             for schema in schemas:
@@ -54,20 +55,28 @@ async def create_config_dict(dsn=None, schemas=None, **conn_dict):
                         if table_cfg:
                             schemas_cfg.update(table_cfg)
 
-            funcs_cfg = {}
-            funcs = await db.list_function_sources(conn_obj=conn_obj,)
-            for func_rec in funcs:
-                func_name = f'{func_rec["function_schema"]}.{func_rec["function_name"]}'
-                funcs_cfg[f'{func_name}:'] = {
-                    'id': func_name,
-                    'schema': func_rec['function_schema'],
-                    'function': func_rec['function_name'],
-                    'minzoom': 0,
-                    'maxzoom': 22,
-                    'bounds': [-180.0, -90.0, 180.0, 90.0],
-                }
+                    if skip_function_sources is False:
+                        funcs = await db.list_function_sources(conn_obj=conn_obj, schema=schema)
+                        if funcs:
+                            logger.info(f'Creating config for {len(funcs)} function source(s)...')
+                            for func_rec in funcs:
+                                func_name = f'{func_rec["function_schema"]}.{func_rec["function_name"]}'
+                                funcs_cfg[f'{func_name}:'] = {
+                                    'id': func_name,
+                                    'schema': func_rec['function_schema'],
+                                    'function': func_rec['function_name'],
+                                    'minzoom': 0,
+                                    'maxzoom': 22,
+                                    'bounds': [-180.0, -90.0, 180.0, 90.0],
+                                }
 
-    return {'table_sources:': schemas_cfg , 'function_sources:': funcs_cfg}
+    if schemas_cfg and funcs_cfg:
+
+        return {'table_sources:': schemas_cfg, 'function_sources:': funcs_cfg }
+    if schemas_cfg and not funcs_cfg:
+        return  {'table_sources:': schemas_cfg}
+    if funcs_cfg and not schemas_cfg:
+        return  {'function_sources:': funcs_cfg}
 
 
 def create_general_config(listen_addresses="'0.0.0.0:3000'", connection_string="'$DATABASE_URL'",

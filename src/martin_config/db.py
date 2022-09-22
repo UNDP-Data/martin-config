@@ -54,7 +54,7 @@ def interpolate_query(sql_file_name=None, **kwargs):
         raise
 
 
-async def list_function_sources(conn_obj=None, sql_file_name='func_sources.sql'):
+async def list_function_sources(conn_obj=None, sql_file_name='func_sources.sql', schema=None):
     """
     List functions that can be used by martin
     see https://github.com/maplibre/martin#function-sources
@@ -65,8 +65,14 @@ async def list_function_sources(conn_obj=None, sql_file_name='func_sources.sql')
     :return: list of asyncpg.Records for each found function
     """
 
-    sql_query = utils.get_sqlfile_content(sql_file_name=sql_file_name)
-    return await run_query(conn_obj=conn_obj, sql_query=sql_query, method='fetch')
+    assert schema is not None, f'Invalid schema={schema}'
+
+    sql_query = interpolate_query(sql_file_name=sql_file_name, schema=schema)
+    return await run_query(
+        conn_obj=conn_obj,
+        sql_query=sql_query,
+        method='fetch'
+    )
 
 
 async def table_exists(conn_obj=None, sql_file_name='table_exists.sql', table=None):

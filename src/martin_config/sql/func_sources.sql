@@ -6,6 +6,7 @@ FROM
     pg_proc p
     LEFT JOIN pg_namespace n ON p.pronamespace = n.oid
 WHERE
+    n.nspname LIKE '{schema}' AND
     n.nspname NOT IN ('pg_catalog', 'information_schema') AND
 	array_to_string(p.proargnames, '') LIKE 'zxyquery_params'
 
