@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "martin-config"
-version = "0.0.1"
+
 authors = [
     { name="Ioan Ferencik", email="ioan.ferencik@undp.org" },
     { name="Jin Igarashi", email="jin.igarashi@undp.org" }
@@ -29,6 +29,10 @@ azure = ["azure-storage-file-share"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
+dynamic = ["version"]
+
+[tool.setuptools.dynamic]
+version = {attr = "martin_config.__version__"}
 
 
 
