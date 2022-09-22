@@ -30,7 +30,7 @@ def main():
     parser = argparse.ArgumentParser(description='Create a config file for martin vector tile server')
 
     parser.add_argument('-s', '--database-schema',
-                            help='A list of schema names.',
+                            help='A list of schema names. If no schema is specified all schemas are used.',
                             type=str, nargs='+', )
     parser.add_argument('-o', '--out-cfg-file',
                             help='Full path to the config file to be created. If not supplied the YAML fill be dumped '
@@ -50,10 +50,10 @@ def main():
     args = parser.parse_args(args=None if sys.argv[1:] else ['--help'])
 
     schemas = args.database_schema
-    schemas = set(schemas[0].split(',') if ',' in schemas[0] else schemas)
+    if schemas:
+        schemas = set(schemas[0].split(',') if ',' in schemas[0] else schemas)
     config_file = args.out_cfg_file
     skip_function_sources = args.skip_function_sources
-    print(skip_function_sources)
     debug = args.debug
     if debug:
         logger.debug('Setting log level to DEBUG')
