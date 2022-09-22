@@ -6,7 +6,9 @@ import sys
 from martin_config import utils, config
 from dotenv import dotenv_values
 
-if __name__ == '__main__':
+
+
+def main():
     logging.basicConfig()
     sthandler = logging.StreamHandler()
     sthandler.setFormatter(
@@ -96,3 +98,5 @@ if __name__ == '__main__':
             file_name='aaa.b'
         )
 
+if __name__ == '__main__':
+    main()
