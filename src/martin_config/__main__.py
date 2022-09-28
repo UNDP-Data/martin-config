@@ -76,6 +76,7 @@ def main():
         if dsn is None:
             dsn = env_dict.get('POSTGRES_DSN', None)
 
+    assert config_file not in [None, ''], f'config_file={config_file} is invalid'
     assert os.path.isfile(config_file), f'config_file={config_file} is invalid'
 
     assert dsn is not None, f'Invalid POSTGRES_DSN={dsn}. Set env variable POSTGRES_DSN to a valid Postgres ' \
