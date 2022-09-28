@@ -1,4 +1,4 @@
-__version__ = "0.0.5"
+__version__ = "0.0.6"
 from martin_config.__main__ import main as martincfg
 if __name__ == '__main__':
     martincfg()
