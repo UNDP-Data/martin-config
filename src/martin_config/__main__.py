@@ -104,7 +104,6 @@ def main():
         upload_cfg_file(
             sas_url=signed_azure_file_share_url,
             cfg_file_path=config_file,
-            file_name='aaa.b'
         )
 
 if __name__ == '__main__':
