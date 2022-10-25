@@ -355,6 +355,19 @@ async def drop_table(conn_obj=None, sql_file_name='drop_table.sql', table=None):
         method='execute'
     )
 
+async def get_table_primary_key(conn_obj=None, sql_file_name='get_table_primary_key.sql', table=None):
+    assert table not in ('', None), f'Invalid table_name={table}'
+    assert '.' in table, f'table={table} is not fully qualified'
+    schema, table_name = table.split('.')
+    sql_query = interpolate_query(
+        sql_file_name=sql_file_name,
+        table_name=table_name
+    )
+    return await run_query(
+        conn_obj=conn_obj,
+        sql_query=sql_query,
+        method='fetch'
+    )
 
 async def get_table_columns(conn_obj=None, sql_file_name='get_table_columns.sql', table=None):
     """
@@ -580,10 +593,24 @@ async def get_table_cfg(conn_obj=None, table=None):
             f'Failed to fetch bounding box for {table} because {e}. Skipping...')
         return
 
+    try:
+        prim_key_rec = await get_table_primary_key(conn_obj=conn_obj,table=table)
+    except Exception as e:
+        logger.warning(f'Features in table {table} will not have feature id .')
+        prim_key_rec = []
+
     tbl_dict['bounds'] = list(bb)
     tbl_dict['srid'] = srid
     tbl_dict['geometry_column'] = geom_column
-    tbl_dict['id_column'] = '~'
+    if prim_key_rec:
+        pkey_rec = prim_key_rec[0]
+        pkey_name = pkey_rec['column_name']
+        pkey_type = pkey_rec['data_type']
+        if not 'int' in pkey_type:
+            logger.warning(f'table {table} has a non number primary key')
+        tbl_dict['id_column'] = pkey_name
+    else:
+        tbl_dict['id_column'] = '~'
 
     tbl_dict['extent'] = 4096
     tbl_dict['buffer'] = 64
