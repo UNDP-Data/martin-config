@@ -59,7 +59,7 @@ async def create_config_dict(dsn=None, schemas=None, for_user=None, skip_functio
                             logger.info(
                                 f'{table} was marked as not publishable and will be skipped')
                             continue
-                        table_cfg = await db.get_table_cfg(conn_obj=conn_obj, table=table)
+                        table_cfg = await db.get_table_cfg(conn_obj=conn_obj, user=for_user, table=table)
                         if table_cfg:
                             schemas_cfg.update(table_cfg)
 
