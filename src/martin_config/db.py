@@ -311,6 +311,114 @@ async def column_is_publishable(conn_obj=None, table=None, column=None):
     return eval(col_comment_dict['publish'].lower().capitalize())
 
 
+async def column_is_accessible(conn_obj=None, sql_file_name='column_is_accessible.sql', table=None, user=None, column=None):
+    """
+    Check if a column is publishable by extracting the column comment and
+    treating  it as a query string and interpreting its meaning.
+    If the comment contains the value publish=True the column will
+    be included in the config file
+
+    :param conn_obj: instance of asyncpg.connection
+    :param table: str, the name of the table
+    :param column: str, the name of the column
+    :return: None if the keyword publish does not exist in the column comment
+             True | False, depending on the value set in the publish keyword
+
+    """
+    assert table not in ('', None), f'Invalid table_name={table}'
+    assert '.' in table, f'table={table} is not fully qualified'
+    assert user not in ('', None), f'Invalid user={column}'
+    assert column not in ('', None), f'Invalid column={column}'
+
+    sql_query = interpolate_query(
+        sql_file_name=sql_file_name,
+        user=user,
+        table=table,
+        column=column
+    )
+
+    return await run_query(
+        conn_obj=conn_obj,
+        sql_query=sql_query,
+        method='fetchval'
+    )
+async def function_is_publishable(conn_obj=None, sql_file_name='function_is_accessible.sql',
+                                  user=None, function_name=None, schema=None):
+
+    assert user not in ('', None), f'Invalid user={user}'
+    assert function_name not in ('', None), f'Invalid function_name={function_name}'
+    assert schema not in ('', None), f'Invalid schema={schema}'
+
+    sql_query = interpolate_query(
+        sql_file_name=sql_file_name,
+        function_name=function_name,
+        schema=schema,
+        user=user,
+
+    )
+
+    return await run_query(
+        conn_obj=conn_obj,
+        sql_query=sql_query,
+        method='fetchval'
+    )
+
+
+
+async def schema_is_accessible(conn_obj=None, sql_file_name='schema_is_accessible.sql', schema=None,  user=None ):
+    """
+        Checks is a user has usage privilege on a given schema
+        :param conn_obj: instance of asyncpg.connection
+        :param sql_file_name: str, the name of the SQL template
+        :param schema: str, the schema
+        :param user: str, the suer
+        :return: True|False
+    """
+
+    assert schema not in ['', None], f'Invalid schema {schema}'
+    assert user not in ['', None], f'Invalid user {schema}'
+
+    sql_query = interpolate_query(
+        sql_file_name=sql_file_name,
+        schema=schema,
+        user=user,
+
+    )
+
+    return await run_query(
+        conn_obj=conn_obj,
+        sql_query=sql_query,
+        method='fetchval'
+    )
+
+
+async def table_is_accessible(conn_obj=None, sql_file_name='table_is_accessible.sql', user=None, table=None, ):
+    """
+    Check if a table is publishable by checking if the given user has
+    been granted select rights on the table
+
+    :param conn_obj: instance of asyncpg.connection
+    :param user: str, the name of the user
+    :param table: str, the name of the table
+    :return: True if the user has been granted select rights, False otherwise
+
+    """
+    assert table not in ('', None), f'Invalid table_name={table}'
+    assert '.' in table, f'table={table} is not fully qualified'
+    sql_query = interpolate_query(
+        sql_file_name=sql_file_name,
+        user=user,
+        table=table,
+    )
+
+    return await run_query(
+        conn_obj=conn_obj,
+        sql_query=sql_query,
+        method='fetchval'
+    )
+
+
+
 async def table_is_publishable(conn_obj=None, table=None, ):
     """
     Check if a table is publishable by extracting the table comment and
@@ -549,7 +657,7 @@ async def get_bbox(conn_obj=None, table=None, geom_column=None, srid=None, compu
     return res['xmin'], res['ymin'], res['xmax'], res['ymax']
 
 
-async def get_table_cfg(conn_obj=None, table=None):
+async def get_table_cfg(conn_obj=None, user=None, table=None):
     """
     Create a config dictionary suitable for configuring martin vector tile service
      for a given table located  in  a database defined by conn_obj or conn_dict
@@ -621,7 +729,10 @@ async def get_table_cfg(conn_obj=None, table=None):
     # properties/attributes are  eagerly collected and are skipped only
     # is the column is marked with publish=False
     for k, v in properties.items():
-        col_is_publishable = await column_is_publishable(conn_obj=conn_obj, table=table, column=k)
+        if not user:
+            col_is_publishable = await column_is_publishable(conn_obj=conn_obj, table=table, column=k)
+        else:
+            col_is_publishable = await column_is_accessible(conn_obj=conn_obj,table=table,user=user,column=k)
         if col_is_publishable is False:
             logger.debug(
                 f'Column {k} from {table} is not publishable and will not be included in the config')

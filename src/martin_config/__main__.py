@@ -29,9 +29,12 @@ def main():
 
     parser = argparse.ArgumentParser(description='Create a config file for martin vector tile server')
 
-    parser.add_argument('-s', '--database-schema',
-                            help='A list of schema names. If no schema is specified all schemas are used.',
-                            type=str, nargs='+', )
+    # parser.add_argument('-s', '--database-schema',
+    #                         help='A list of schema names. If no schema is specified all schemas are used.',
+    #                         type=str, nargs='+', )
+    parser.add_argument('-u', '--database-user',
+                            help='The user for which the config will be created',
+                            type=str, required=True )
     parser.add_argument('-o', '--out-cfg-file',
                             help='Full path to the config file to be created. If not supplied the YAML fill be dumped '
                                  'to stdout ', type=str,default=None)
@@ -48,10 +51,7 @@ def main():
                         )
 
     args = parser.parse_args(args=None if sys.argv[1:] else ['--help'])
-
-    schemas = args.database_schema
-    if schemas:
-        schemas = set(schemas[0].split(',') if ',' in schemas[0] else schemas)
+    for_user = args.database_user
     config_file = args.out_cfg_file
     skip_function_sources = args.skip_function_sources
     debug = args.debug
@@ -86,11 +86,11 @@ def main():
 
     schemas_config = asyncio.run(config.create_config_dict(
         dsn=dsn,
-        schemas=schemas,
+        for_user=for_user,
         skip_function_sources=skip_function_sources
     ))
 
-    general_config.update(schemas_config)
+    general_config.update(schemas_config or {})
 
     yaml_config = utils.dump(general_config)
     logger.info(f'Writing config to {config_file}')

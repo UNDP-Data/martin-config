@@ -2,7 +2,7 @@ from martin_config import utils, db
 import logging
 import asyncpg
 logger = logging.getLogger(__name__)
-async def create_config_dict(dsn=None, schemas=None, skip_function_sources=False, **conn_dict):
+async def create_config_dict(dsn=None, schemas=None, for_user=None, skip_function_sources=False, **conn_dict):
     """
     Create a configuration dictionary for all table sources in a postgis database.
     If schema is provided the config is generated for the given schema
@@ -34,15 +34,23 @@ async def create_config_dict(dsn=None, schemas=None, skip_function_sources=False
             if not schemas:
                 schemas = available_schemas
             for schema in schemas:
-
+                if for_user:
+                    logger.debug(f'Checking if user {for_user} has usage privilege on {schema}')
+                    if not db.schema_is_accessible(conn_obj=conn_obj, schema=schema, user=for_user):
+                        logger.info(f'User {for_user} has not been granted USAGE privilege on schema {schema}')
+                        continue
                 logger.debug(f'Checking if schema {schema} exists')
                 if not schema in available_schemas:
                     logger.warning(f'Schema "{schema}" does not exist in {dsn}.'
                                    f'Valid options are: {",".join(available_schemas)}')
+                    continue
                 else:
                     for table in await db.list_tables(conn_obj=conn_obj, schema=schema):
                         try:
-                            will_publish = await db.table_is_publishable(table=table, conn_obj=conn_obj)
+                            if for_user:
+                                will_publish = await db.table_is_accessible(conn_obj=conn_obj, table=table, user=for_user)
+                            else: # old mode, will be deprecated
+                                will_publish = await db.table_is_publishable(table=table, conn_obj=conn_obj)
                         except Exception as ee:
                             logger.error(
                                 f'Failed to fetch comments for table {table} because {ee}. Skipping...')
@@ -61,6 +69,14 @@ async def create_config_dict(dsn=None, schemas=None, skip_function_sources=False
                             logger.info(f'Creating config for {len(funcs)} function source(s)...')
                             for func_rec in funcs:
                                 func_name = f'{func_rec["function_schema"]}.{func_rec["function_name"]}'
+                                if for_user:
+                                    is_publishable = await db.function_is_publishable(
+                                        conn_obj=conn_obj,user=for_user,function_name=func_rec['function_name'],
+                                        schema=func_rec['function_schema']
+                                    )
+                                    if not is_publishable:
+                                        logger.info(f'user {for_user} was not granted execute privilege for function {func_name}')
+                                        continue
                                 funcs_cfg[f'{func_name}:'] = {
                                     'id': func_name,
                                     'schema': func_rec['function_schema'],

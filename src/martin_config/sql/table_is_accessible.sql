@@ -1,0 +1,1 @@
+SELECT pg_catalog.has_table_privilege('{user}', '{table}', 'SELECT') as "select";

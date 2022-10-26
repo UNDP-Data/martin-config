@@ -112,11 +112,12 @@ def dump(input_dict, depth=0, content=[]):
     :return:
     """
     spacer = ''.join(depth * [' '])
-    for k, v in input_dict.items():
-        if isinstance(v, dict):
-            content.append(f'{spacer}{k}')
-            dump(v, depth=depth + 2, content=content)
-        else:
-            content.append(
-                f'{spacer}{k}: {str(v).lower() if type(v) is bool else v}')
-    return '\n'.join(content)
+    if input_dict:
+        for k, v in input_dict.items():
+            if isinstance(v, dict):
+                content.append(f'{spacer}{k}')
+                dump(v, depth=depth + 2, content=content)
+            else:
+                content.append(
+                    f'{spacer}{k}: {str(v).lower() if type(v) is bool else v}')
+        return '\n'.join(content)

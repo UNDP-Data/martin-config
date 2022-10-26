@@ -1,0 +1,1 @@
+SELECT pg_catalog.has_column_privilege('{user}', '{table}', '{column}', 'SELECT') as "select";
