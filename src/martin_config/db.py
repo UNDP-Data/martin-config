@@ -704,7 +704,7 @@ async def get_table_cfg(conn_obj=None, user=None, table=None):
     try:
         prim_key_rec = await get_table_primary_key(conn_obj=conn_obj,table=table)
     except Exception as e:
-        logger.warning(f'Features in table {table} will not have feature id .')
+        logger.info(f'Features in table {table} will not have feature id .')
         prim_key_rec = []
 
     tbl_dict['bounds'] = list(bb)

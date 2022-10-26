@@ -23,7 +23,7 @@ async def create_config_dict(dsn=None, schemas=None, for_user=None, skip_functio
             f'Creating config dict for tables in \"{", ".join(schemas)}" schemas ...')
     else:
         logger.info(
-            f'Creating config dict for tables in all available schemas ...')
+            f'Creating config for tables in all available schemas ...')
     funcs_cfg = {}
     async with asyncpg.create_pool(dsn=dsn, min_size=utils.POOL_MINSIZE, max_size=utils.POOL_MAXSIZE,
                                    command_timeout=utils.POOL_COMMAND_TIMEOUT, ) as pool:
@@ -36,7 +36,7 @@ async def create_config_dict(dsn=None, schemas=None, for_user=None, skip_functio
             for schema in schemas:
                 if for_user:
                     logger.debug(f'Checking if user {for_user} has usage privilege on {schema}')
-                    if not db.schema_is_accessible(conn_obj=conn_obj, schema=schema, user=for_user):
+                    if not await db.schema_is_accessible(conn_obj=conn_obj, schema=schema, user=for_user):
                         logger.info(f'User {for_user} has not been granted USAGE privilege on schema {schema}')
                         continue
                 logger.debug(f'Checking if schema {schema} exists')
