@@ -729,7 +729,6 @@ async def get_table_cfg(conn_obj=None, user=None, table=None):
     # properties/attributes are  eagerly collected and are skipped only
     # is the column is marked with publish=False
     for k, v in properties.items():
-        if tbl_dict['id_column'] == k: continue
         if not user:
             col_is_publishable = await column_is_publishable(conn_obj=conn_obj, table=table, column=k)
         else:
