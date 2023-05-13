@@ -11,7 +11,7 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_METHODS = 'execute', 'fetch', 'fetchval'
+ALLOWED_METHODS = 'execute', 'fetch', 'fetchval', 'fetchrow'
 
 
 async def run_query(conn_obj=None, sql_query=None, method='execute'):
